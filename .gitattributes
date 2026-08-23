@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.qml text eol=lf
+*.sh text eol=lf
+*.png binary
+*.gz binary
+service/hexdecode-armv7 binary

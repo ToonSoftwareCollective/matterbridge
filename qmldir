@@ -1,0 +1,4 @@
+module apps.matterbridge
+MatterbridgeApp 1.0 MatterbridgeApp.qml
+MatterBridgeTile 1.0 MatterBridgeTile.qml
+MatterBridgeScreen 1.0 MatterBridgeScreen.qml

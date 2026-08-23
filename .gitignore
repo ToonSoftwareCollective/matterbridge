@@ -1,0 +1,9 @@
+.DS_Store
+/dist/
+*.log
+*.pid
+home/
+.matterbridge/
+matter-bridge.json
+status.json
+*.install-*

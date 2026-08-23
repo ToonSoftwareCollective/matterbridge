@@ -1,0 +1,1 @@
+Experimentele Matter Bridge voor Toon 2. Kies in één scrolbaar overzicht welke ondersteunde apparaten lokaal aan Google Home worden aangeboden. Versie 0.2.1 ondersteunt de Toon-thermostaat, elektrisch vermogen en volledig bekende ComfortHub-thermostaten. Niet aanwezige apparaten verdwijnen automatisch; tijdelijk offline apparaten blijven zichtbaar.

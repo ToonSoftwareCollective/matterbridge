@@ -1,0 +1,27 @@
+{
+  "title": "Toon Matter Bridge",
+  "description": "De apparaatkeuze wordt op Toon beheerd.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "readOnly": true,
+      "ui:widget": "hidden"
+    },
+    "type": {
+      "type": "string",
+      "readOnly": true,
+      "ui:widget": "hidden"
+    },
+    "debug": {
+      "title": "Diagnostische logging",
+      "type": "boolean",
+      "default": false
+    },
+    "unregisterOnShutdown": {
+      "type": "boolean",
+      "default": false,
+      "ui:widget": "hidden"
+    }
+  }
+}

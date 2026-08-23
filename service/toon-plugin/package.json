@@ -1,0 +1,19 @@
+{
+  "name": "matterbridge-toon",
+  "version": "0.2.1",
+  "description": "Expose selected Toon climate and energy devices through Matter",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/module.js",
+  "exports": {
+    ".": "./dist/module.js"
+  },
+  "engines": {
+    "node": ">=20.19.0 <21.0.0 || >=22.13.0 <23.0.0"
+  },
+  "files": [
+    "dist",
+    "*.config.json",
+    "*.schema.json"
+  ]
+}
