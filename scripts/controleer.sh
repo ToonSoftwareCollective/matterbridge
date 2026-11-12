@@ -19,6 +19,7 @@ for path in MatterbridgeApp.qml MatterBridgeTile.qml MatterBridgeScreen.qml matt
     service/toon-plugin/dist/module.js \
     vendor/toon-node-runtime.complete.tar.gz \
     vendor/toon-matter-app-busybox.complete.tar.gz \
+    vendor/icudt76l.dat \
     docs/images/matterbridge_screenshot_1.png \
     docs/images/matterbridge_screenshot_2.png \
     docs/images/matterbridge_screenshot_3.png
@@ -33,9 +34,12 @@ grep -q '<screenshots>3</screenshots>' ToonRepo-entry.xml || fail "catalogus ver
 
 EXPECTED_RUNTIME=9f6de98d07d021110d69861d842d28e87cd0c4307917dbe72a2a82efe9b07b62
 EXPECTED_APP=8e0ab976ec84421a0698c6824981ea93b171731db53c3bcaddcceb1148e83f61
+EXPECTED_ICU=c2a3fd74d2d7634ddae740c64ed90a714cd22f90538f563197155128c50b7daf
 hash_file() { sha256sum "$1" 2>/dev/null | awk '{print $1}' || shasum -a 256 "$1" | awk '{print $1}'; }
 [ "$(hash_file vendor/toon-node-runtime.complete.tar.gz)" = "$EXPECTED_RUNTIME" ] || fail "Node-runtime heeft een onverwachte checksum"
 [ "$(hash_file vendor/toon-matter-app-busybox.complete.tar.gz)" = "$EXPECTED_APP" ] || fail "Matterbridge-bundle heeft een onverwachte checksum"
+[ "$(hash_file vendor/icudt76l.dat)" = "$EXPECTED_ICU" ] || fail "ICU-gegevensbestand heeft een onverwachte checksum"
+grep -q -- "--passcode" service/toon-matter-service.sh || fail "service start zonder vaste koppelcode; QR-code in de app klopt dan niet"
 
 sh -n matterbridge.sh service/toon-matter-service.sh
 tar -tzf vendor/toon-node-runtime.complete.tar.gz >/dev/null

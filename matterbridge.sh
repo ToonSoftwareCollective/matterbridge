@@ -18,8 +18,14 @@ PID_FILE=/var/run/toon-matter-service.pid
 LOG_FILE=/var/volatile/log/toon-matter-service.log
 RUNTIME_ARCHIVE="$APP_DIR/vendor/toon-node-runtime.complete.tar.gz"
 MATTER_ARCHIVE="$APP_DIR/vendor/toon-matter-app-busybox.complete.tar.gz"
+# Alpine levert libicudata als lege stub; de echte ICU-gegevens staan in dit
+# bestand uit icu-data-en 76.1-r1. Zonder dit bestand crasht Node bij de eerste
+# datumopmaak met "DateTimePatternGeneratorCache ... out of memory".
+ICU_DATA_FILE="$APP_DIR/vendor/icudt76l.dat"
+ICU_DATA_TARGET="$RUNTIME_ROOT/usr/share/icu/76.1/icudt76l.dat"
 RUNTIME_SHA256=9f6de98d07d021110d69861d842d28e87cd0c4307917dbe72a2a82efe9b07b62
 MATTER_SHA256=8e0ab976ec84421a0698c6824981ea93b171731db53c3bcaddcceb1148e83f61
+ICU_DATA_SHA256=c2a3fd74d2d7634ddae740c64ed90a714cd22f90538f563197155128c50b7daf
 
 fail() {
     echo "Matter Bridge-installatie mislukt: $*" >&2
@@ -85,6 +91,7 @@ stop_service() {
 install_app() {
     verify_archive "$RUNTIME_ARCHIVE" "$RUNTIME_SHA256"
     verify_archive "$MATTER_ARCHIVE" "$MATTER_SHA256"
+    verify_archive "$ICU_DATA_FILE" "$ICU_DATA_SHA256"
     mkdir -p "$SERVICE_ROOT" /var/volatile/log
     stop_service
 
@@ -99,6 +106,9 @@ install_app() {
     extract_once "$RUNTIME_ARCHIVE" "$RUNTIME_ROOT" usr/bin/node
     extract_once "$MATTER_ARCHIVE" "$MATTER_APP_ROOT" node_modules/matterbridge/bin/matterbridge.js
     ensure_swap
+
+    mkdir -p "$(dirname "$ICU_DATA_TARGET")"
+    cmp -s "$ICU_DATA_FILE" "$ICU_DATA_TARGET" || cp "$ICU_DATA_FILE" "$ICU_DATA_TARGET"
 
     mkdir -p "$MATTER_APP_ROOT/plugins/matterbridge-toon/dist" "$HOME_ROOT"
     cp "$APP_DIR/service/toon-plugin/package.json" \
