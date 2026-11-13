@@ -254,17 +254,32 @@ export class ToonMatterPlatform extends MatterbridgeDynamicPlatform {
     const maximum = Number.isFinite(device.max_temperature) ? Number(device.max_temperature) : 30;
     const name = String(device.name).slice(0, 32);
     const serial = `TOON-${String(device.id).replace(/[^A-Za-z0-9]/g, '').slice(-20).toUpperCase()}`;
-    const endpoint = new MatterbridgeEndpoint([thermostat, bridgedNode, powerSource], { id: String(device.id) }, this.config.debug)
+    // De Toon zelf kan alleen verwarmen: publiceer hem als verwarmingsthermostaat,
+    // zodat controllers geen koel- of automodus met twee setpoints aanbieden.
+    const heatingOnly = device.source === 'toon';
+    const base = new MatterbridgeEndpoint([thermostat, bridgedNode, powerSource], { id: String(device.id) }, this.config.debug)
       .createDefaultIdentifyClusterServer()
-      .createDefaultBridgedDeviceBasicInformationClusterServer(name, serial, 0xfff1, 'Toon', 'Toon klimaatapparaat')
-      .createDefaultThermostatClusterServer(current, target, target, 1, minimum, maximum - 1, minimum + 1, maximum)
+      .createDefaultBridgedDeviceBasicInformationClusterServer(name, serial, 0xfff1, 'Toon', 'Toon klimaatapparaat');
+    const endpoint = (heatingOnly
+      ? base.createDefaultHeatingThermostatClusterServer(current, target, minimum, maximum)
+      : base.createDefaultThermostatClusterServer(current, target, target, 1, minimum, maximum - 1, minimum + 1, maximum))
       .createDefaultPowerSourceWiredClusterServer()
       .addRequiredClusterServers();
 
-    const entry = { endpoint, slot, name, source: String(device.source || 'comfort-hub'), last: {} };
+    const entry = { endpoint, slot, name, source: String(device.source || 'comfort-hub'), heatingOnly, last: {} };
     endpoint.subscribeAttribute(Thermostat, 'systemMode', (value, _oldValue, context) => {
       if (context?.fabric === undefined) return;
-      if (entry.source === 'toon') return;
+      if (entry.source === 'toon') {
+        // De Toon kent geen uit-stand via deze weg; zet de weergave terug op
+        // verwarmen zodat de controller niet ten onrechte "uit" blijft tonen.
+        if (value !== Thermostat.SystemMode.Heat) {
+          entry.last.mode = value;
+          void endpoint.setAttribute(Thermostat.id, 'systemMode', Thermostat.SystemMode.Heat, endpoint.log)
+            .then(() => { entry.last.mode = Thermostat.SystemMode.Heat; })
+            .catch(() => {});
+        }
+        return;
+      }
       const mode = MATTER_TO_MODE.get(value);
       if (!mode) return;
       void this.sendClimateCommand(entry, 'mode', mode);
@@ -273,10 +288,12 @@ export class ToonMatterPlatform extends MatterbridgeDynamicPlatform {
       if (context?.fabric === undefined) return;
       void this.sendClimateCommand(entry, 'temperature', value / 100);
     }, endpoint.log);
-    endpoint.subscribeAttribute(Thermostat, 'occupiedCoolingSetpoint', (value, _oldValue, context) => {
-      if (context?.fabric === undefined) return;
-      void this.sendClimateCommand(entry, 'temperature', value / 100);
-    }, endpoint.log);
+    if (!heatingOnly) {
+      endpoint.subscribeAttribute(Thermostat, 'occupiedCoolingSetpoint', (value, _oldValue, context) => {
+        if (context?.fabric === undefined) return;
+        void this.sendClimateCommand(entry, 'temperature', value / 100);
+      }, endpoint.log);
+    }
 
     await this.registerDevice(endpoint);
     this.log.notice(`Via Matter gedeeld: ${name}`);
@@ -297,7 +314,9 @@ export class ToonMatterPlatform extends MatterbridgeDynamicPlatform {
     if (Number.isFinite(target) && entry.last.target !== targetValue) {
       const setpoint = Math.round(target * 100);
       await endpoint.setAttribute(Thermostat.id, 'occupiedHeatingSetpoint', setpoint, endpoint.log);
-      await endpoint.setAttribute(Thermostat.id, 'occupiedCoolingSetpoint', setpoint, endpoint.log);
+      if (!entry.heatingOnly) {
+        await endpoint.setAttribute(Thermostat.id, 'occupiedCoolingSetpoint', setpoint, endpoint.log);
+      }
       entry.last.target = targetValue;
     }
     if (entry.last.mode !== mode) {
@@ -347,10 +366,11 @@ export class ToonMatterPlatform extends MatterbridgeDynamicPlatform {
     try {
       if (entry.source === 'toon') {
         if (command !== 'temperature') return;
-        const temperature = Math.max(6, Math.min(30, Number(value)));
+        // Toon rekent in honderdsten van graden (1850 = 18,5 °C) en stappen van 0,5 °C.
+        const temperature = Math.round(Math.max(6, Math.min(30, Number(value))) * 2) / 2;
         if (!Number.isFinite(temperature)) throw new Error('ongeldige doeltemperatuur');
         const response = await fetch(
-          `${TOON_THERMOSTAT_URL}?action=setSetpoint&Setpoint=${Math.round(temperature * 10)}`,
+          `${TOON_THERMOSTAT_URL}?action=setSetpoint&Setpoint=${Math.round(temperature * 100)}`,
           { signal: AbortSignal.timeout(2500) },
         );
         if (!response.ok) throw new Error(`Toon-thermostaat gaf HTTP ${response.status}`);

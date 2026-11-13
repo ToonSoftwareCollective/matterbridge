@@ -68,6 +68,12 @@ start_service() {
     is_running && exit 0
 
     mkdir -p "$MATTERBRIDGE_HOME" "$STATUS_ROOT" "$LOG_ROOT"
+    # Node crasht met "ENOENT uv_cwd" als de werkmap van de aanroeper niet
+    # meer bestaat (zoals bij installatie via het TSC-hulpscript).
+    cd "$MATTERBRIDGE_HOME" 2>/dev/null || cd /
+    # Bij een lokale npm-installatie zoekt Matterbridge zijn frontend in de
+    # app-map in plaats van in node_modules/matterbridge.
+    test -e "$APP_ROOT/apps" || ln -s node_modules/matterbridge/apps "$APP_ROOT/apps"
     activate_matter_swap
     ensure_toon_plugin
     allow_matter_traffic
@@ -75,6 +81,8 @@ start_service() {
         --bridge \
         --homedir "$MATTERBRIDGE_HOME" \
         --mdnsinterface wlan0 \
+        --passcode 62850275 \
+        --discriminator 3564 \
         --logger info \
         --matterlogger warn \
         --novirtual \

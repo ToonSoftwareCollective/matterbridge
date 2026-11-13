@@ -3,4 +3,5 @@
 *.sh text eol=lf
 *.png binary
 *.gz binary
+*.dat binary
 service/hexdecode-armv7 binary
